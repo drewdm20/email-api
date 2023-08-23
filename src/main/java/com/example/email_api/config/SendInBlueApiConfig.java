@@ -17,6 +17,7 @@ import javax.annotation.PostConstruct;
 @Configuration
 public class SendInBlueApiConfig {
 
+    // The api key is stored in the application.yml file
     @Value("${sendinblue.api.key}")
     private String apiKey;
 
@@ -32,7 +33,7 @@ public class SendInBlueApiConfig {
     }
 
     /**
-     * This post construct autoconfigures the api client with the API key
+     * This post construct autoconfigures the api client with the API key when the application starts
      * @author Drew
      * @since 23/08/2023
      */

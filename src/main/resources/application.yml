@@ -1,0 +1,12 @@
+# Spring
+spring:
+  application:
+    name: email-service
+
+# Email API
+sendinblue:
+  api:
+    key: ${API_KEY}
+  sender:
+    email: ${SENDER}
+    name: ${SENDER_NAME}

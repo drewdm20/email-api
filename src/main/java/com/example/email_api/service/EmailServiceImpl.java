@@ -1,13 +1,14 @@
 package com.example.email_api.service;
 
-import com.sun.istack.internal.NotNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.spring5.SpringTemplateEngine;
 import sendinblue.ApiException;
 import sibApi.TransactionalEmailsApi;
 import sibModel.*;
+import org.thymeleaf.context.Context;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,8 +22,8 @@ import java.util.List;
 @Slf4j
 public class EmailServiceImpl implements EmailService{
 
-    // Secret values for the sender of the email
-    @Value("${sendinblue.sender}")
+    // Values for the sender of the email
+    @Value("${sendinblue.sender.email}")
     private String senderEmail;
 
     @Value("${sendinblue.sender.name}")
@@ -30,9 +31,12 @@ public class EmailServiceImpl implements EmailService{
 
     private final TransactionalEmailsApi transactionalEmailsApi;
 
+    private final SpringTemplateEngine springTemplateEngine;
+
     @Autowired
-    public EmailServiceImpl(TransactionalEmailsApi transactionalEmailsApi) {
+    public EmailServiceImpl(TransactionalEmailsApi transactionalEmailsApi, SpringTemplateEngine springTemplateEngine) {
         this.transactionalEmailsApi = transactionalEmailsApi;
+        this.springTemplateEngine = springTemplateEngine;
     }
 
     /**
@@ -55,45 +59,81 @@ public class EmailServiceImpl implements EmailService{
     }
 
     /**
-     * This function sets the attributes of the SMTP email to be sent to the user
+     * This function creates an SMTP email that will be sent to the user
+     * @author Drew
+     * @since 23/08/2023
      * @param email the email of the user
      * @return a SMTP email object
      */
-    @NotNull
     private SendSmtpEmail getSmtpEmail(String email) {
-        // Creating object
-        SendSmtpEmail sendSmtpEmail = new SendSmtpEmail();// SendSmtpEmail | Values to send a transactional email
-        // Setting email sender
-        SendSmtpEmailSender sender = new SendSmtpEmailSender();
-        sender.setEmail(senderEmail);
-        sender.setName(senderName);
-        sendSmtpEmail.setSender(sender);
-        // Setting reply to email
+        SendSmtpEmail sendSmtpEmail = new SendSmtpEmail();
+        setSender(sendSmtpEmail);
+        setReplyTo(sendSmtpEmail);
+        setRecipientList(email, sendSmtpEmail);
+        setSubject(sendSmtpEmail);
+        setContent(sendSmtpEmail);
+        return sendSmtpEmail;
+    }
+
+    /**
+     * Sets the subject of the SendSmtpEmail instance.
+     * @author Drew
+     * @since 23/08/2023
+     * @param sendSmtpEmail The SendSmtpEmail instance to set the subject for.
+     */
+    private static void setSubject(SendSmtpEmail sendSmtpEmail) {
+        sendSmtpEmail.setSubject("Forgot Password OTP");
+    }
+
+    /**
+     * Sets the HTML content of the SendSmtpEmail instance by processing a Thymeleaf template.
+     * @author Drew
+     * @since 24/08/2023
+     * @param sendSmtpEmail The SendSmtpEmail instance to set the HTML content for.
+     */
+    private void setContent(SendSmtpEmail sendSmtpEmail) {
+        // Setting the HTML body (OTP still needs to be parsed into context variable)
+        Context context = new Context();
+        String content = springTemplateEngine.process("forgot-password-template", context);
+        sendSmtpEmail.setHtmlContent(content);
+    }
+
+    /**
+     * Sets the recipients of the SendSmtpEmail instance.
+     * @author Drew
+     * @since 23/08/2023
+     * @param email The email address of the recipient.
+     * @param sendSmtpEmail The SendSmtpEmail instance to set the recipients for.
+     */
+    private static void setRecipientList(String email, SendSmtpEmail sendSmtpEmail) {
+        List<SendSmtpEmailTo> toList = new ArrayList<>();
+        toList.add(new SendSmtpEmailTo().email(email));
+        sendSmtpEmail.setTo(toList);
+    }
+
+    /**
+     * Sets the reply-to email address and name for the SendSmtpEmail instance.
+     * @author Drew
+     * @since 23/08/2023
+     * @param sendSmtpEmail The SendSmtpEmail instance to set the reply-to for.
+     */
+    private void setReplyTo(SendSmtpEmail sendSmtpEmail) {
         SendSmtpEmailReplyTo replyTo = new SendSmtpEmailReplyTo();
         replyTo.setEmail(senderEmail);
         replyTo.setName(senderName);
         sendSmtpEmail.setReplyTo(replyTo);
-        // Setting the recipients of the email
-        List<SendSmtpEmailTo> toList = new ArrayList<>();
-        toList.add(new SendSmtpEmailTo().email(email));
-        sendSmtpEmail.setTo(toList);
-        // Setting the subject of the email
-        sendSmtpEmail.setSubject("Forgot Password OTP");
-        // Setting the HTML body (OTP still needs to be parsed and styling applied)
-        sendSmtpEmail.setHtmlContent("<!DOCTYPE html>\n" +
-                "<html>\n" +
-                "<head>\n" +
-                " <title>Forgot Password OTP</title>\n" +
-                "</head>\n" +
-                "<body>\n" +
-                " <h1>Forgot Password OTP</h1>\n" +
-                " <p>Hi Farmer,</p>\n" +
-                " <p>You have requested to reset your password. Your OTP is <strong>{{otp}}</strong>. This OTP is valid for 10 minutes.</p>\n" +
-                " <p>If you did not request to reset your password, please ignore this email.</p>\n" +
-                " <p>Thank you,</p>\n" +
-                " <p>AgriFund</p>\n" +
-                "</body>\n" +
-                "</html>");
-        return sendSmtpEmail;
+    }
+
+    /**
+     * Sets the sender's email address and name for the SendSmtpEmail instance.
+     * @author Drew
+     * @since 23/08/2023
+     * @param sendSmtpEmail The SendSmtpEmail instance to set the sender for.
+     */
+    private void setSender(SendSmtpEmail sendSmtpEmail) {
+        SendSmtpEmailSender sender = new SendSmtpEmailSender();
+        sender.setEmail(senderEmail);
+        sender.setName(senderName);
+        sendSmtpEmail.setSender(sender);
     }
 }
